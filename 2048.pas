@@ -9,8 +9,8 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'Beta 1.1.1';
-      Date                     = '2014.6.10';
+      Version                  = 'Beta 1.2.0';
+      Date                     = '2014.6.11';
 
 /////////////////////////External Program & File Information/////////////////////////
 
@@ -27,7 +27,8 @@ CONST
 
 /////////////////////////Game Constant/////////////////////////
 
-      maxmapbackup             =10000;
+      maxmapbackup             = 10000;
+      undocost                 = 100;
 
 /////////////////////////Block Constant/////////////////////////
 
@@ -83,8 +84,8 @@ VAR maxx             : longint=4;
     blocknum         : array[1..maxblocktype] of string;
     noblock          : Tblock;
 
-VAR map,lastmap                         : array[1..arrmaxx,1..arrmaxy] of Tblock;
-    oldmap                              : array[0..maxmapbackup-1,1..arrmaxx,1..arrmaxy] of Tblock;
+VAR map,oldmap                          : array[1..arrmaxx,1..arrmaxy] of Tblock;
+    mapbackup                           : array[0..maxmapbackup-1,1..arrmaxx,1..arrmaxy] of Tblock;
     gamewin,gamelose                    : boolean;
     logged                              : boolean;
     savedata                            : Tsave;
@@ -205,9 +206,9 @@ begin
     gotoxy(windmaxx-15,7);tb(0);tc(7);write('×î¸ß·Ö£º',savedata.maxscore);
   end;
   s:=inttostr(step);
-  gotoxy(windmaxx-9,5);tb(0);tc(7);write(s);
+  gotoxy(windmaxx-9,5);tb(0);tc(7);write(s);for i:=1 to 10-length(s) do write(' ');
   s:=inttostr(score);
-  gotoxy(windmaxx-9,6);tb(0);tc(7);write(s);
+  gotoxy(windmaxx-9,6);tb(0);tc(7);write(s);for i:=1 to 10-length(s) do write(' ');
 end;
 procedure print_game_info;
 begin
@@ -219,10 +220,10 @@ var i,j:longint;
 begin
   for i:=1 to maxx do
    for j:=1 to maxy do
-    if (map[i,j]=lastmap[i,j])=false then
+    if (map[i,j]=oldmap[i,j])=false then
     begin
       print_block(i,j);
-      lastmap[i,j]:=map[i,j];
+      oldmap[i,j]:=map[i,j];
     end;
 end;
 
@@ -300,13 +301,14 @@ begin
    for j:=1 to arrmaxy do
    begin
      map[i,j]:=noblock;
-     lastmap[i,j].id:=-1;
+     oldmap[i,j].id:=-1;
    end;
   step:=0;
   score:=0;
   gamewin:=false;
   gamelose:=false;
   for i:=1 to 2 do new_block;
+  mapbackup[step]:=map;
   print_all;
 end;
 
@@ -422,6 +424,16 @@ begin
     writeln(f,'MaxScore=',maxscore);
     close(f);
   end;//end with
+end;
+
+function undo(n:longint):longint;
+begin
+  if n<0 then exit(1);
+  if score<undocost then exit(2);
+  dec(score,undocost);
+  step:=n;
+  map:=mapbackup[n mod maxmapbackup];
+  exit(0);
 end;
 
 function move(fx:longint):boolean;
@@ -553,11 +565,13 @@ begin
     print_map;
     print_game_info;
     kp:=upcase(readkey);
+    movesucc:=false;
     case kp of
       'W':movesucc:=move(0);
       'A':movesucc:=move(3);
       'S':movesucc:=move(2);
       'D':movesucc:=move(1);
+      'U':undo(step-1);
       #0:begin
            kp:=readkey;
            case kp of
@@ -579,6 +593,7 @@ begin
     if movesucc then
     begin
       inc(step);
+      mapbackup[step mod maxmapbackup]:=map;
       new_block;
     end;
   until false;
