@@ -9,13 +9,13 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'Beta 1.1.0';
+      Version                  = 'Beta 1.1.1';
       Date                     = '2014.6.10';
 
 /////////////////////////External Program & File Information/////////////////////////
 
       SettingFileNam           = '2048_Setting.ini';
-      SaveFileNam           = '2048_Save.dat';
+      SaveFileNam              = '2048_Save.dat';
 
 /////////////////////////Main Constant/////////////////////////
 
@@ -24,6 +24,10 @@ CONST
       maxblocktype             = 105;
       maxcolor                 = 11;
       maxfx                    = 4;
+
+/////////////////////////Game Constant/////////////////////////
+
+      maxmapbackup             =10000;
 
 /////////////////////////Block Constant/////////////////////////
 
@@ -79,7 +83,8 @@ VAR maxx             : longint=4;
     blocknum         : array[1..maxblocktype] of string;
     noblock          : Tblock;
 
-VAR map,oldmap                          : array[1..arrmaxx,1..arrmaxy] of Tblock;
+VAR map,lastmap                         : array[1..arrmaxx,1..arrmaxy] of Tblock;
+    oldmap                              : array[0..maxmapbackup-1,1..arrmaxx,1..arrmaxy] of Tblock;
     gamewin,gamelose                    : boolean;
     logged                              : boolean;
     savedata                            : Tsave;
@@ -214,10 +219,10 @@ var i,j:longint;
 begin
   for i:=1 to maxx do
    for j:=1 to maxy do
-    if (map[i,j]=oldmap[i,j])=false then
+    if (map[i,j]=lastmap[i,j])=false then
     begin
       print_block(i,j);
-      oldmap[i,j]:=map[i,j];
+      lastmap[i,j]:=map[i,j];
     end;
 end;
 
@@ -295,7 +300,7 @@ begin
    for j:=1 to arrmaxy do
    begin
      map[i,j]:=noblock;
-     oldmap[i,j].id:=-1;
+     lastmap[i,j].id:=-1;
    end;
   step:=0;
   score:=0;
@@ -394,6 +399,7 @@ var f:text;
    end;
 
 begin
+  if fsearch(savefilenam,'\')='' then exit(false);
   with savedata do
   begin
     assign(f,savefilenam);
@@ -401,6 +407,7 @@ begin
     r(s);val(s,maxscore);
     close(f);
   end;//end with
+  exit(true);
 end;
 
 
