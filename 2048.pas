@@ -9,8 +9,8 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'Beta 1.2.0';
-      Date                     = '2014.6.11';
+      Version                  = 'Beta 1.2.1';
+      Date                     = '2014.6.12';
 
 /////////////////////////External Program & File Information/////////////////////////
 
@@ -28,7 +28,7 @@ CONST
 /////////////////////////Game Constant/////////////////////////
 
       maxmapbackup             = 10000;
-      undocost                 = 100;
+      undocost                 = 1000;
 
 /////////////////////////Block Constant/////////////////////////
 
