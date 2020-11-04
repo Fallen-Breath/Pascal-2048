@@ -9,8 +9,13 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'Beta 1.0.1';
-      Date                     = '2014.6.8';
+      Version                  = 'Beta 1.1.0';
+      Date                     = '2014.6.10';
+
+/////////////////////////External Program & File Information/////////////////////////
+
+      SettingFileNam           = '2048_Setting.ini';
+      SaveFileNam           = '2048_Save.dat';
 
 /////////////////////////Main Constant/////////////////////////
 
@@ -20,11 +25,20 @@ CONST
       maxcolor                 = 11;
       maxfx                    = 4;
 
+/////////////////////////Block Constant/////////////////////////
+
+      minmaxx                  = 2;
+      minmaxy                  = 2;
+      maxmaxx                  = arrmaxx;
+      maxmaxy                  = arrmaxy;
+
+      minblockwide             = 3;
+      minblockhigh             = 3;
+      maxblockwide             = 13;
+      maxblockhigh             = 13;
 
 /////////////////////////Graph Constant/////////////////////////
 
-      blockwide=3;
-      blockhigh=3;
       blockcolor:array[1..maxcolor] of longint      = (0,0,0,7,7,15,15,8,0,0,0);
       blockbackground:array[1..maxcolor] of longint = (7,7,7,1,1,3 ,4 ,5,6,6,6);
 
@@ -53,9 +67,15 @@ TYPE Tblock=record
      Tsave=record
              maxscore:longint;
            end;
+     Tsetting=record
+
+              end;
 
 VAR maxx             : longint=4;
     maxy             : longint=4;
+    blockwide        : longint=5;
+    blockhigh        : longint=5;
+
     blocknum         : array[1..maxblocktype] of string;
     noblock          : Tblock;
 
@@ -63,6 +83,7 @@ VAR map,oldmap                          : array[1..arrmaxx,1..arrmaxy] of Tblock
     gamewin,gamelose                    : boolean;
     logged                              : boolean;
     savedata                            : Tsave;
+    setting                             : Tsetting;
     choose                              : longint;
     step,score                          : longint;
 
@@ -157,8 +178,8 @@ begin
                (blockwide+1)*2*x,(blockhigh+1)*y);
 
     if id=0 then exit;
-    gotoxy(1+(blockwide+1)*2*(x-1)+2+blockwide div 2+1-length(st) div 2,
-             (blockhigh+1)*(y-1)+2+blockhigh div 2);
+    gotoxy(1+(blockwide+1)*2*(x-1)+1+blockwide-length(st) div 2,
+             (blockhigh+1)*(y-1)+2+(blockhigh-1) div 2);
     tc(blockcolor[(id-1) mod maxcolor+1]);
     write(st);
   end;
@@ -176,12 +197,13 @@ begin
   begin
     gotoxy(windmaxx-15,5);tb(0);tc(7);write('步数：');
     gotoxy(windmaxx-15,6);tb(0);tc(7);write('分数：');
+    gotoxy(windmaxx-15,7);tb(0);tc(7);write('最高分：',savedata.maxscore);
   end;
   s:=inttostr(step);
   gotoxy(windmaxx-9,5);tb(0);tc(7);write(s);
   s:=inttostr(score);
   gotoxy(windmaxx-9,6);tb(0);tc(7);write(s);
-end;  
+end;
 procedure print_game_info;
 begin
   print_game_info(0);
@@ -276,6 +298,7 @@ begin
      oldmap[i,j].id:=-1;
    end;
   step:=0;
+  score:=0;
   gamewin:=false;
   gamelose:=false;
   for i:=1 to 2 do new_block;
@@ -299,10 +322,53 @@ var i,j:longint;
      exec('game.bat','');
    end;
 
+   procedure init_savedata;
+   var i:longint;
+   begin
+     with savedata do
+     begin
+       maxscore:=0;
+     end;//end with
+   end;
+
+   procedure readsetting;
+   var s:string;
+       t:longint;
+       wjin,wjout:text;
+
+      procedure r(var s:string);
+      begin
+        readln(wjin,s);while (s[1]<>'=') and (length(s)<>0) do delete(s,1,1);delete(s,1,1);
+      end;
+
+   begin
+     with setting do
+     begin
+       if fsearch(SettingFileNam,'\')<>'' then
+       begin
+         assign(wjin,SettingFileNam);
+         reset(wjin);
+         r(s);val(s,maxx,t);if (t<>0) or (maxx<minmaxx) or (maxx>maxmaxx) then maxx:=4;
+         r(s);val(s,maxy,t);if (t<>0) or (maxy<minmaxy) or (maxy>maxmaxy) then maxy:=4;
+         r(s);val(s,blockwide,t);if (t<>0) or (blockwide<minblockwide) or (blockwide>maxblockwide) then blockwide:=5;
+         r(s);val(s,blockhigh,t);if (t<>0) or (blockhigh<minblockhigh) or (blockhigh>maxblockhigh) then blockhigh:=5;
+         close(wjin)
+       end;//end if fsearch(SettingFileNam,'\')<>''
+       assign(wjout,SettingFileNam);
+       rewrite(wjout);
+       writeln(wjout,'MaxX=',maxx);
+       writeln(wjout,'MaxY=',maxy);
+       writeln(wjout,'BlockWide=',blockwide);
+       writeln(wjout,'BlockHigh=',blockhigh);
+       close(wjout);
+     end;//end with
+   end;
+
 begin
   cursoroff;
   randomize;
   tb(0);tc(15);clrscr;gotoxy_mid('Loading...',1);write('Loading...');
+  readsetting;
   windmaxx:=((blockwide+1)*maxx+1)*2+20;
   windmaxy:=(blockhigh+1)*maxy+1+2;
   change_program;
@@ -315,6 +381,40 @@ begin
     id:=0;
     st:='';
   end;
+end;
+
+function load:boolean;
+var f:text;
+    i:longint;
+    s:string;
+
+   procedure r(var s:string);
+   begin
+     readln(f,s);while (s[1]<>'=') and (length(s)<>0) do delete(s,1,1);delete(s,1,1);
+   end;
+
+begin
+  with savedata do
+  begin
+    assign(f,savefilenam);
+    reset(f);
+    r(s);val(s,maxscore);
+    close(f);
+  end;//end with
+end;
+
+
+procedure save;
+var f:text;
+    i:longint;
+begin
+  with savedata do
+  begin
+    assign(f,savefilenam);
+    rewrite(f);
+    writeln(f,'MaxScore=',maxscore);
+    close(f);
+  end;//end with
 end;
 
 function move(fx:longint):boolean;
@@ -342,13 +442,14 @@ begin
               begin
                 swap(map[x,y],map[x,i]);
                 move:=true;
-                 break;
+                break;
               end; //end for i
            end; //end for y
           for y:=1 to maxy-1 do
            if (composed[x,y]=false) and (map[x,y]=map[x,y+1]) and ((map[x,y]=noblock)=false) then
            begin
              composed[x,y]:=true;
+             move:=true;
              block_inc(map[x,y]);
              for i:=y+1 to maxy-1 do
                map[x,i]:=map[x,i+1];
@@ -374,6 +475,7 @@ begin
            if (composed[x,y]=false) and (map[x,y]=map[x-1,y]) and ((map[x,y]=noblock)=false) then
            begin
              composed[x,y]:=true;
+             move:=true;
              block_inc(map[x,y]);
              for i:=x-1 downto 2 do
                map[i,y]:=map[i-1,y];
@@ -399,6 +501,7 @@ begin
            if (composed[x,y]=false) and (map[x,y]=map[x,y-1]) and ((map[x,y]=noblock)=false) then
            begin
              composed[x,y]:=true;
+             move:=true;
              block_inc(map[x,y]);
              for i:=y-1 downto 2 do
                map[x,i]:=map[x,i-1];
@@ -424,8 +527,9 @@ begin
            if (composed[x,y]=false) and (map[x,y]=map[x+1,y]) and ((map[x,y]=noblock)=false) then
            begin
              composed[x,y]:=true;
+             move:=true;
              block_inc(map[x,y]);
-             for i:=x+1 to maxx do
+             for i:=x+1 to maxx-1 do
                map[i,y]:=map[i+1,y];
              map[maxx,y]:=noblock;
            end;//end for y
@@ -475,8 +579,10 @@ begin
    else exit(0);
 end;
 
-procedure clear_game;
+procedure end_game;
 begin
+  if (maxx=4) and (maxy=4) then savedata.maxscore:=max(savedata.maxscore,score);
+  save;
 end;
 
 procedure work_game;
@@ -484,7 +590,7 @@ var playexit:longint;
 begin
   init_game;
   playexit:=play;
-  clear_game;
+  end_game;
 
   gotoxy(windmaxx-12,2);
   case playexit of
@@ -519,5 +625,6 @@ end;
 
 BEGIN
   init_program;
+  load;
   work_main;
 END.
