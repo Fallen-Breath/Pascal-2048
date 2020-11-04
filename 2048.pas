@@ -9,7 +9,7 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'Beta 1.0.0';
+      Version                  = 'Beta 1.0.1';
       Date                     = '2014.6.8';
 
 /////////////////////////Main Constant/////////////////////////
@@ -168,14 +168,23 @@ begin
   print_block(pos.x,pos.y);
 end;
 
-procedure print_game_info;
+procedure print_game_info(mode:longint);
 var i:longint;
     s:string;
 begin
-  s:='步数：'+inttostr(step);
-  gotoxy(windmaxx-15,5);tb(0);tc(7);write(s);
-  s:='分数：'+inttostr(score);
-  gotoxy(windmaxx-15,6);tb(0);tc(7);write(s);
+  if mode=1 then
+  begin
+    gotoxy(windmaxx-15,5);tb(0);tc(7);write('步数：');
+    gotoxy(windmaxx-15,6);tb(0);tc(7);write('分数：');
+  end;
+  s:=inttostr(step);
+  gotoxy(windmaxx-9,5);tb(0);tc(7);write(s);
+  s:=inttostr(score);
+  gotoxy(windmaxx-9,6);tb(0);tc(7);write(s);
+end;  
+procedure print_game_info;
+begin
+  print_game_info(0);
 end;
 
 procedure print_map;
@@ -193,7 +202,7 @@ end;
 procedure print_all;
 begin
   print_map;
-  print_game_info;
+  print_game_info(1);
 end;
 
 procedure print_program_info;
@@ -293,11 +302,11 @@ var i,j:longint;
 begin
   cursoroff;
   randomize;
+  tb(0);tc(15);clrscr;gotoxy_mid('Loading...',1);write('Loading...');
   windmaxx:=((blockwide+1)*maxx+1)*2+20;
   windmaxy:=(blockhigh+1)*maxy+1+2;
-  tb(0);tc(15);clrscr;
-  gotoxy_mid('Loading...',1);write('Loading...');
   change_program;
+  tb(0);tc(15);clrscr;gotoxy_mid('Loading...',1);write('Loading...');
   print_program_info;
   dec(windmaxy,2);
 
@@ -445,12 +454,12 @@ begin
              #75:movesucc:=move(3);
              #80:movesucc:=move(2);
              #77:movesucc:=move(1);
-             #27:begin
-                   if gamewin then exit(1)
-                    else exit(2);
-                 end; //end case #27
            end; //end case
          end; //end case #0
+      #27:begin
+            if gamewin then exit(1)
+             else exit(2);
+          end; //end case #27
       else movesucc:=false;
     end; //end case
     gamewin:=check_gamewin;
