@@ -9,7 +9,7 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'V1.0.0';
+      Version                  = 'V1.0.1';
       Date                     = '2014.6.22';
 
 /////////////////////////External Program & File Information/////////////////////////
@@ -93,6 +93,8 @@ VAR map,oldmap                          : array[1..arrmaxx,1..arrmaxy] of Tblock
     setting                             : Tsetting;
     choose                              : longint;
     step,score                          : longint;
+    path                                : ansistring;
+    byt                                 : byte;
 
 
 procedure F4;
@@ -204,12 +206,14 @@ begin
   begin
     gotoxy(windmaxx-15,5);tb(0);tc(7);write('步数：');
     gotoxy(windmaxx-15,6);tb(0);tc(7);write('分数：');
-    gotoxy(windmaxx-15,7);tb(0);tc(7);write('最高分：',savedata.maxscore);
+    gotoxy(windmaxx-15,7);tb(0);tc(7);write('最高分：');
   end;
   s:=inttostr(step);
   gotoxy(windmaxx-9,5);tb(0);tc(7);write(s);for i:=1 to 10-length(s) do write(' ');
   s:=inttostr(score);
   gotoxy(windmaxx-9,6);tb(0);tc(7);write(s);for i:=1 to 10-length(s) do write(' ');
+  s:=inttostr(savedata.maxscore);
+  gotoxy(windmaxx-7,7);tb(0);tc(7);write(s);for i:=1 to 8-length(s) do write(' ');
 end;
 procedure print_game_info;
 begin
@@ -653,6 +657,7 @@ begin
       new_block;
       save_map;
     end;
+    if (maxx=4) and (maxy=4) then savedata.maxscore:=max(savedata.maxscore,score);
   until false;
   if gamewin then exit(1)
    else exit(0);
@@ -661,7 +666,6 @@ end;
 procedure end_game;
 var f:file;
 begin
-  if (maxx=4) and (maxy=4) then savedata.maxscore:=max(savedata.maxscore,score);
   save;
   if gamelose then
   begin
@@ -697,6 +701,17 @@ begin
   tb(0);clrscr;
 end;
 
+procedure setsetting;
+var i,n,t:longint;
+    s:string;
+begin
+  clrscr;
+  s:='设置将在游戏重启后生效';
+  gotoxy_mid(s);tb(0);tc(7);write(s);
+  exec('notepad.exe',path+'\'+SettingFileNam);
+  readkey;
+end;
+
 procedure work_main;
 var choose:longint;
 begin
@@ -705,9 +720,11 @@ begin
     gotoxy_mid(getastr(length('开始游戏')+6),1);
     if ismap then choose:=chooseone('继续游戏'+ln+
                                     '新游戏'+ln+
+                                    '设置'+ln+
                                     '退出')
 
     else choose:=chooseone('开始游戏'+ln+
+                           '设置'+ln+
                            '退出');
     if ismap then dec(choose);
 
@@ -717,12 +734,14 @@ begin
           work_game(1);
         end;
       1:work_game(0);
-      2:break;
+      2:setsetting;
+      3:break;
     end;
   until false;
 end;
 
 BEGIN
+  getdir(byt,path);
   init_program;
   load;
   work_main;
