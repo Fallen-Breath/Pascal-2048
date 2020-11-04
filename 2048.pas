@@ -9,13 +9,14 @@ CONST
 /////////////////////////Program Information/////////////////////////
 
       AppName                  = '2048';
-      Version                  = 'Beta 1.2.1';
-      Date                     = '2014.6.12';
+      Version                  = 'V1.0.0';
+      Date                     = '2014.6.22';
 
 /////////////////////////External Program & File Information/////////////////////////
 
       SettingFileNam           = '2048_Setting.ini';
       SaveFileNam              = '2048_Save.dat';
+      MapFileNam               = '2048_Map.dat';
 
 /////////////////////////Main Constant/////////////////////////
 
@@ -292,42 +293,64 @@ begin
   new_block.x:=x;new_block.y:=y;
 end;
 
-procedure init_game;
+procedure change_programsize;
+var f:text;
+begin
+  assign(f,'game.bat');
+  rewrite(f);
+  writeln(f,'@echo off');
+  writeln(f,'@chcp 936');
+  writeln(f,'@title 2048');
+  writeln(f,'mode con COLS=',((blockwide+1)*maxx+1)*2+20,' LINES=',(blockhigh+1)*maxy+1+2);
+  writeln(f,'@del game.bat');
+  close(f);
+  exec('game.bat','');
+  windmaxx:=((blockwide+1)*maxx+1)*2+20;
+  windmaxy:=(blockhigh+1)*maxy+1+2;
+end;
+
+procedure unchange_programsize;
+var f:text;
+begin
+  assign(f,'game.bat');
+  rewrite(f);
+  writeln(f,'@echo off');
+  writeln(f,'@chcp 936');
+  writeln(f,'@title 2048');
+  writeln(f,'mode con COLS=',80,' LINES=',25);
+  writeln(f,'@del game.bat');
+  close(f);
+  exec('game.bat','');
+  windmaxx:=80;
+  windmaxy:=25;
+end;
+
+procedure init_game(mode:longint);
 var i,j:longint;
 begin
+  change_programsize;
   clrscr;
   drawwindow(1,1,((blockwide+1)*maxx+1)*2,(blockhigh+1)*maxy+1,2);
   for i:=1 to arrmaxx do
    for j:=1 to arrmaxy do
    begin
-     map[i,j]:=noblock;
+     if mode=0 then map[i,j]:=noblock;
      oldmap[i,j].id:=-1;
    end;
-  step:=0;
-  score:=0;
   gamewin:=false;
   gamelose:=false;
-  for i:=1 to 2 do new_block;
+  if mode=0 then
+  begin
+    step:=0;
+    score:=0;
+    for i:=1 to 2 do new_block;
+  end;
   mapbackup[step]:=map;
   print_all;
 end;
 
 procedure init_program;
 var i,j:longint;
-
-   procedure change_program;
-   var f:text;
-   begin
-     assign(f,'game.bat');
-     rewrite(f);
-     writeln(f,'@echo off');
-     writeln(f,'@chcp 936');
-     writeln(f,'@title 2048');
-     writeln(f,'mode con COLS=',((blockwide+1)*maxx+1)*2+20,' LINES=',(blockhigh+1)*maxy+1+2);
-     writeln(f,'@del game.bat');
-     close(f);
-     exec('game.bat','');
-   end;
 
    procedure init_savedata;
    var i:longint;
@@ -376,10 +399,6 @@ begin
   randomize;
   tb(0);tc(15);clrscr;gotoxy_mid('Loading...',1);write('Loading...');
   readsetting;
-  windmaxx:=((blockwide+1)*maxx+1)*2+20;
-  windmaxy:=(blockhigh+1)*maxy+1+2;
-  change_program;
-  tb(0);tc(15);clrscr;gotoxy_mid('Loading...',1);write('Loading...');
   print_program_info;
   dec(windmaxy,2);
 
@@ -424,6 +443,43 @@ begin
     writeln(f,'MaxScore=',maxscore);
     close(f);
   end;//end with
+end;
+
+procedure save_map;
+var x,y:longint;
+    f_save:text;
+begin
+  assign(f_save,mapfilenam);
+  rewrite(f_save);
+  writeln(f_save,maxx,' ',maxy);
+  for x:=1 to maxx do
+   for y:=1 to maxy do
+    with map[x,y] do
+      writeln(f_save,id,' ',st);
+  writeln(f_save,step);
+  writeln(f_save,score);
+  close(f_save);
+end;
+
+function ismap:boolean;
+begin
+  exit(fsearch(mapfilenam,'\')<>'');
+end;
+
+procedure load_map;
+var fn,x,y:longint;
+    f_load:text;
+begin
+  assign(f_load,mapfilenam);
+  reset(f_load);
+  readln(f_load,maxx,maxy);
+  for x:=1 to maxx do
+   for y:=1 to maxy do
+    with map[x,y] do
+      readln(f_load,id,st);
+  readln(f_load,step);
+  readln(f_load,score);
+  close(f_load);
 end;
 
 function undo(n:longint):longint;
@@ -595,6 +651,7 @@ begin
       inc(step);
       mapbackup[step mod maxmapbackup]:=map;
       new_block;
+      save_map;
     end;
   until false;
   if gamewin then exit(1)
@@ -602,15 +659,24 @@ begin
 end;
 
 procedure end_game;
+var f:file;
 begin
   if (maxx=4) and (maxy=4) then savedata.maxscore:=max(savedata.maxscore,score);
   save;
+  if gamelose then
+  begin
+    if ismap then
+    begin
+      assign(f,mapfilenam);
+      erase(f);
+    end;//end if
+  end;//end if
 end;
 
-procedure work_game;
+procedure work_game(mode:longint);
 var playexit:longint;
 begin
-  init_game;
+  init_game(mode);
   playexit:=play;
   end_game;
 
@@ -627,6 +693,7 @@ begin
   delay(1000);
   while keypressed do readkey;
   readkey;
+  unchange_programsize;
   tb(0);clrscr;
 end;
 
@@ -636,10 +703,20 @@ begin
   repeat
     clrscr;
     gotoxy_mid(getastr(length('开始游戏')+6),1);
-    choose:=chooseone('开始游戏'+ln+
-                      '退出');
+    if ismap then choose:=chooseone('继续游戏'+ln+
+                                    '新游戏'+ln+
+                                    '退出')
+
+    else choose:=chooseone('开始游戏'+ln+
+                           '退出');
+    if ismap then dec(choose);
+
     case choose of
-      1:work_game;
+      0:begin
+          load_map;
+          work_game(1);
+        end;
+      1:work_game(0);
       2:break;
     end;
   until false;
